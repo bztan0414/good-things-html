@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <title>热敏打印机 - 上传 & 预览 & 打印</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        textarea, input, select, button { margin: 5px; padding: 10px; font-size: 16px; }
+        #preview { width: 300px; min-height: 20px; margin: 20px auto; padding: 2px; border: 0px solid #000; background: #f5f5f5; text-align: left; }
+        #preview img { max-width: 100%; height: auto; display: block; margin: 5px auto; }
+    </style>
+</head>
+<body>
+    <h2>热敏打印机</h2>
+    
+    <textarea id="textToPrint" placeholder="输入要打印的内容..." oninput="updatePreview()"></textarea><br>
+    
+    <label>字体大小：</label>
+    <select id="fontSize" onchange="updatePreview()">
+        <option value="18px">小</option>
+        <option value="22px" selected>中</option>
+        <option value="28px">大</option>
+    </select>
+
+    <label>对齐方式：</label>
+    <select id="align" onchange="updatePreview()">
+        <option value="left">左对齐</option>
+        <option value="center">居中</option>
+        <option value="right">右对齐</option>
+    </select>
+
+    <div id="preview"></div>
+
+    <input type="file" id="fileInput" accept="image/*" multiple onchange="previewFile()">
+    
+    <button onclick="connectPrinter()">连接打印机</button>
+    <button onclick="printContent()">打印</button>
+    <button onclick="pushPaper()">手动推纸</button>
+    <button onclick="clearPreview()">清空预览</button>
+    <button onclick="disconnectPrinter()">断开连接</button>
+    <button onclick="exportAsJPG()">导出为 JPG</button>
+
+    <script>
+        let printerPort, printerWriter;
+
+        async function connectPrinter() {
+            try {
+                printerPort = await navigator.serial.requestPort();
+                await printerPort.open({ baudRate: 9600 });
+                printerWriter = printerPort.writable.getWriter();
+                alert("打印机已连接！");
+            } catch (error) {
+                alert("连接失败: " + error.message);
+            }
+        }
+
+        async function disconnectPrinter() {
+            if (!printerPort) return;
+            await printerWriter.releaseLock();
+            await printerPort.close();
+            printerPort = printerWriter = null;
+            alert("打印机已断开！");
+        }
+
+        function updatePreview() {
+            let text = document.getElementById("textToPrint").value;
+            let fontSize = document.getElementById("fontSize").value;
+            let align = document.getElementById("align").value;
+            let preview = document.getElementById("preview");
+
+            let images = [...preview.querySelectorAll("img")]; // 获取已有图片
+            let formattedText = text.replace(/\n/g, "<br>"); // 换行符替换为 <br>
+            
+            preview.innerHTML = `<p style="font-size:${fontSize}; text-align:${align}; margin: 0;">${formattedText}</p>`;
+            images.forEach(img => preview.appendChild(img)); // 重新加入图片
+        }
+
+
+        function previewFile() {
+            let files = document.getElementById("fileInput").files;
+            if (!files.length) return;
+
+            for (let file of files) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let img = document.createElement("img");
+                    img.src = e.target.result;
+                    document.getElementById("preview").appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function sendCommand(data) {
+                    if (!printerWriter) return alert("请先连接打印机！");
+                    await printerWriter.write(new Uint8Array(data));
+                }
+
+                async function printContent() {
+            const preview = document.getElementById("preview");
+
+            // 使用 html2canvas 将 preview 转换为图片
+            html2canvas(preview, {
+                scale: 2, // 提高分辨率
+                useCORS: true, // 允许跨域资源
+            }).then(canvas => {
+                // 获取 canvas 的图像数据
+                const imgData = canvas.toDataURL("image/jpeg", 0.9); // 质量为 90%
+
+                // 创建 img 元素并加载图片数据
+                const img = new Image();
+                img.src = imgData;
+
+                // 等待图片加载完成后打印
+                img.onload = async function() {
+                    try {
+                        let printCanvas = document.createElement("canvas");
+                        let ctx = printCanvas.getContext("2d");
+
+                        // 设置打印机宽度（适配 58mm 打印机，或你需要的打印机规格）
+                        printCanvas.width = 384;
+                        printCanvas.height = (img.height / img.width) * 384;
+                        ctx.drawImage(img, 0, 0, printCanvas.width, printCanvas.height);
+
+                        let imageData = ctx.getImageData(0, 0, printCanvas.width, printCanvas.height);
+                        let data = imageData.data;
+                        let grayscale = [];
+
+                        // 转换为黑白图像
+                        for (let i = 0; i < data.length; i += 4) {
+                            let r = data[i];       // 红色
+                            let g = data[i + 1];   // 绿色
+                            let b = data[i + 2];   // 蓝色
+
+                            // 计算像素的平均亮度
+                            let brightness = (r + g + b) / 3;
+
+                            // 使用阈值判断是黑色还是白色
+                            grayscale.push(brightness < 128 ? 0 : 1);  // 128 是阈值，亮度低于该值为黑色，否则为白色
+                        }
+
+
+
+                        // 每行字节数
+                        let bytesPerRow = Math.ceil(printCanvas.width / 8);
+                        let imageBytes = [];
+
+                        for (let y = 0; y < printCanvas.height; y++) {
+                            let row = [];
+                            for (let x = 0; x < printCanvas.width; x += 8) {
+                                let byte = 0;
+                                for (let bit = 0; bit < 8; bit++) {
+                                    let pixelIndex = y * printCanvas.width + x + bit;
+                                    if (grayscale[pixelIndex] === 0) {
+                                        byte |= (1 << (7 - bit));
+                                    }
+                                }
+                                row.push(byte);
+                            }
+                            imageBytes.push(...row);
+                        }
+
+                        // 发送打印命令（适用于热敏打印机等）
+                        await sendCommand([0x1D, 0x76, 0x30, 0, bytesPerRow & 0xFF, (bytesPerRow >> 8) & 0xFF, printCanvas.height & 0xFF, (printCanvas.height >> 8) & 0xFF]);
+                        await sendCommand(imageBytes);
+
+                        // 走纸
+                        await sendCommand([0x1B, 0x64, 3]); // 3 是走纸长度，可以根据需要调整
+
+                    } catch (error) {
+                        alert("打印图片失败: " + error.message);
+                    }
+                };
+
+                // 如果图片加载失败，打印错误
+                img.onerror = function() {
+                    alert("图片加载失败");
+                };
+            }).catch(error => {
+                alert("转换为图片失败: " + error.message);
+            });
+        }
+
+
+
+
+
+        async function pushPaper() {
+            await sendCommand([0x1B, 0x64, 5]);
+        }
+
+        function clearPreview() {
+            document.getElementById("preview").innerHTML = "";
+            document.getElementById("textToPrint").value = "";
+        }
+        function exportAsJPG() {
+        const preview = document.getElementById("preview");
+        
+        html2canvas(preview, {
+            scale: 2, // 提高分辨率（可选）
+            backgroundColor: "#ffffff", // 使用白色背景而非透明背景，防止出现黑边
+            useCORS: true, // 允许跨域资源
+        }).then(canvas => {
+            const link = document.createElement("a");
+            link.download = "preview.jpg";
+            link.href = canvas.toDataURL("image/jpeg", 0.9); // 0.9 = 90% 质量
+            link.click();
+        });
+    }
+
+
+    </script>
+</body>
+</html>
