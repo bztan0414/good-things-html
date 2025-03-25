@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -8,8 +9,34 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
         textarea, input, select, button { margin: 5px; padding: 10px; font-size: 16px; }
-        #preview { width: 300px; min-height: 20px; margin: 20px auto; padding: 2px; border: 0px solid #000; background: #f5f5f5; text-align: left; }
-        #preview img { max-width: 100%; height: auto; display: block; margin: 5px auto; }
+        #preview { width: 300px; min-height: 20px; margin: 20px auto; padding: 2px; border: 0px solid #000; background: #f5f5f5; text-align: center; }
+        .resizable {
+            display: inline-block;
+            position: relative;
+            margin: 5px;
+        }
+        .resizable img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            cursor: pointer;
+        }
+        .resizable.selected {
+            border: 2px solid blue; /* 选中图片时显示蓝色边框 */
+        }
+        .resizer {
+            width: 10px;
+            height: 10px;
+            background: red;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            cursor: nwse-resize;
+            display: none; /* 默认隐藏 */
+        }
+        .resizable.selected .resizer {
+            display: block; /* 选中时显示拖动角 */
+        }
     </style>
 </head>
 <body>
@@ -31,6 +58,7 @@
         <option value="right">右对齐</option>
     </select>
 
+
     <div id="preview"></div>
 
     <input type="file" id="fileInput" accept="image/*" multiple onchange="previewFile()">
@@ -46,15 +74,55 @@
         let printerPort, printerWriter;
 
         async function connectPrinter() {
-            try {
-                printerPort = await navigator.serial.requestPort();
-                await printerPort.open({ baudRate: 9600 });
-                printerWriter = printerPort.writable.getWriter();
-                alert("打印机已连接！");
-            } catch (error) {
-                alert("连接失败: " + error.message);
+            // 检测是否是移动设备
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+            if (!isMobile) {
+                // 🚀 **PC 端 - 使用 Web Serial API**
+                try {
+                    const printerPort = await navigator.serial.requestPort();
+                    await printerPort.open({ baudRate: 9600 });
+                    printerWriter = printerPort.writable.getWriter();
+                    alert("✅ PC 端：USB 打印机已连接！");
+                    return;
+                } catch (error) {
+                    alert("❌ 连接失败（PC 端 USB）： " + error.message);
+                }
+            } else {
+                // 🚀 **手机端 - 检测 Android 或 iOS**
+                if (/Android/i.test(navigator.userAgent)) {
+                    try {
+                        // **Android - 优先尝试蓝牙连接**
+                        const device = await navigator.bluetooth.requestDevice({
+                            acceptAllDevices: true,
+                            optionalServices: ['battery_service'] // 你的打印机 UUID
+                        });
+                        const server = await device.gatt.connect();
+                        alert("✅ Android 端：蓝牙打印机已连接！");
+                        return;
+                    } catch (error) {
+                        alert("⚠️ 蓝牙连接失败，尝试 USB 连接...");
+                    }
+
+                    try {
+                        // **Android - USB 连接（OTG）**
+                        const device = await navigator.usb.requestDevice({ filters: [] }); // 这里可以加 `vendorId`
+                        await device.open();
+                        await device.selectConfiguration(1);
+                        await device.claimInterface(0);
+                        alert("✅ Android 端：USB 打印机已连接！");
+                        return;
+                    } catch (error) {
+                        alert("❌ USB OTG 连接失败：" + error.message);
+                    }
+                } else {
+                    // 🚨 **iOS 设备 - 直接提示不支持**
+                    alert("❌ iOS 设备不支持直接连接打印机！请使用服务器打印或 AirPrint。");
+                }
             }
         }
+
+
 
         async function disconnectPrinter() {
             if (!printerPort) return;
@@ -70,12 +138,14 @@
             let align = document.getElementById("align").value;
             let preview = document.getElementById("preview");
 
-            let images = [...preview.querySelectorAll("img")]; // 获取已有图片
+            let images = [...preview.querySelectorAll(".resizable")]; // 获取所有图片
             let formattedText = text.replace(/\n/g, "<br>"); // 换行符替换为 <br>
-            
-            preview.innerHTML = `<p style="font-size:${fontSize}; text-align:${align}; margin: 0;">${formattedText}</p>`;
+
+            preview.innerHTML = `<p style="font-size:${fontSize}; text-align:${align}; margin: 0; pointer-events: none;">${formattedText}</p>`;
+
             images.forEach(img => preview.appendChild(img)); // 重新加入图片
         }
+
 
 
         function previewFile() {
@@ -84,13 +154,74 @@
 
             for (let file of files) {
                 let reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
+                    let container = document.createElement("div");
+                    container.classList.add("resizable");
+
                     let img = document.createElement("img");
                     img.src = e.target.result;
-                    document.getElementById("preview").appendChild(img);
+                    img.style.width = "150px"; // 默认宽度
+                    img.style.height = "auto";
+
+                    let resizer = document.createElement("div");
+                    resizer.classList.add("resizer");
+
+                    container.appendChild(img);
+                    container.appendChild(resizer);
+                    document.getElementById("preview").appendChild(container);
+
+                    img.addEventListener("click", function () {
+                        toggleImageSelection(container);
+                    });
+
+                    makeResizable(container, img, resizer);
                 };
                 reader.readAsDataURL(file);
             }
+
+            // 解决上传相同文件无反应的问题
+            document.getElementById("fileInput").value = "";
+        }
+
+        function toggleImageSelection(container) {
+            if (container.classList.contains("selected")) {
+                // 如果已选中，再次点击取消选中
+                container.classList.remove("selected");
+            } else {
+                // 先取消其他所有图片的选中状态
+                document.querySelectorAll(".resizable").forEach(imgContainer => {
+                    imgContainer.classList.remove("selected");
+                });
+                // 选中当前图片
+                container.classList.add("selected");
+            }
+        }
+
+        function makeResizable(container, img, resizer) {
+            let isResizing = false;
+
+            resizer.addEventListener("mousedown", function (e) {
+                e.preventDefault();
+                isResizing = true;
+
+                let startX = e.clientX;
+                let startWidth = img.offsetWidth;
+
+                function mouseMoveHandler(e) {
+                    if (!isResizing) return;
+                    let newWidth = startWidth + (e.clientX - startX);
+                    img.style.width = newWidth + "px";
+                }
+
+                function mouseUpHandler() {
+                    isResizing = false;
+                    document.removeEventListener("mousemove", mouseMoveHandler);
+                    document.removeEventListener("mouseup", mouseUpHandler);
+                }
+
+                document.addEventListener("mousemove", mouseMoveHandler);
+                document.addEventListener("mouseup", mouseUpHandler);
+            });
         }
 
         async function sendCommand(data) {
