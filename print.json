@@ -1,0 +1,26 @@
+{
+  "0": {
+    "type": 0,
+    "content": "My Title",
+    "bold": 1,
+    "align": 2,
+    "format": 3
+  },
+  "1": {
+    "type": 1,
+    "path": "https://yourname.github.io/image.jpg",
+    "align": 2
+  },
+  "2": {
+    "type": 2,
+    "value": "1234567890123",
+    "height": 50,
+    "align": 0
+  },
+  "3": {
+    "type": 3,
+    "value": "sample qr text",
+    "size": 40,
+    "align": 2
+  }
+}
