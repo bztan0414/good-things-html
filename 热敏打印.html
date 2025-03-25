@@ -274,77 +274,73 @@
 
     <script>
         // 保持原有的 JavaScript 代码不变
-        let printerPort, printerWriter;
+        let printerPort = null; // 让全局变量存储串口连接
+        let printerWriter = null;
         let isBold = false;
 
         async function connectPrinter() {
-            // 检测是否是移动设备
             const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
             if (!isMobile) {
-                // 🚀 **PC 端 - 使用 Web Serial API**
+                // 🚀 PC 端 - 连接 USB 打印机
                 try {
-                    const printerPort = await navigator.serial.requestPort();
+                    printerPort = await navigator.serial.requestPort();
                     await printerPort.open({ baudRate: 9600 });
                     printerWriter = printerPort.writable.getWriter();
                     alert("✅ PC 端：USB 打印机已连接！");
-                    return;
                 } catch (error) {
                     alert("❌ 连接失败（PC 端 USB）： " + error.message);
                 }
             } else {
-                // 🚀 **手机端 - 检测 Android 或 iOS**
+                // 🚀 **Android - 连接蓝牙打印机**
                 if (/Android/i.test(navigator.userAgent)) {
                     try {
-                        // **Android - 优先尝试蓝牙连接**
                         const device = await navigator.bluetooth.requestDevice({
                             acceptAllDevices: true,
-                            optionalServices: ['battery_service'] // 你的打印机 UUID
-                        });
-                        const server = await device.gatt.connect();
-                        alert("✅ Android 端：蓝牙打印机已连接！");
-                        return;
-                    } catch (error) {
-                        alert("⚠️ 蓝牙连接失败，尝试 USB 连接...");
-                    }
-
-                    try {
-                        const device = await navigator.bluetooth.requestDevice({
-                            acceptAllDevices: true,
-                            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] // 常见热敏打印机 UUID
+                            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
                         });
 
                         const server = await device.gatt.connect();
                         const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
                         const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
 
-                        let data = new TextEncoder().encode("Hello Printer\n"); // 打印内容
+                        let data = new TextEncoder().encode("Hello Printer\n"); // 发送数据
                         await characteristic.writeValue(data);
                         
-                        alert("发送成功！");
+                        alert("✅ Android 端：蓝牙打印机已连接！");
                     } catch (error) {
-                        alert("连接失败：" + error.message);
+                        alert("⚠️ 连接失败：" + error.message);
                     }
+                } else {
+                    alert("❌ iOS 目前不支持 Web 蓝牙连接打印机");
                 }
             }
         }
 
         async function disconnectPrinter() {
+            if (!printerPort) {
+                alert("没有连接的打印机！");
+                return;
+            }
             try {
-                if (!printerPort) {
-                    alert("没有连接的打印机!");
-                    return;
-                }
                 if (printerWriter) {
-                    await printerWriter.releaseLock();
+                    await printerWriter.abort(); // 终止写入，防止锁定
+                    printerWriter.releaseLock();
+                    printerWriter = null;
                 }
-                await printerPort.close();
-                printerPort = printerWriter = null;
-                alert("打印机已断开！");
+
+                if (printerPort.readable || printerPort.writable) {
+                    await printerPort.close(); // 关闭串口
+                }
+                printerPort = null;
+
+                alert("✅ 打印机已断开！");
             } catch (error) {
-                alert("断开打印机失败: " + error.message);
+                alert("❌ 断开连接失败：" + error.message);
             }
         }
+
+
 
         function toggleBold() {
             isBold = !isBold;
@@ -497,7 +493,7 @@
 
                         await sendCommand([0x1D, 0x76, 0x30, 0, bytesPerRow & 0xFF, (bytesPerRow >> 8) & 0xFF, printCanvas.height & 0xFF, (printCanvas.height >> 8) & 0xFF]);
                         await sendCommand(imageBytes);
-                        await sendCommand([0x1B, 0x64, 3]);
+                        await sendCommand([0x1B, 0x64, 1]);
 
                     } catch (error) {
                         alert("打印图片失败: " + error.message);
@@ -513,7 +509,7 @@
         }
 
         async function pushPaper() {
-            await sendCommand([0x1B, 0x64, 5]);
+            await sendCommand([0x1B, 0x64, 3]);
         }
 
         function clearPreview() {
