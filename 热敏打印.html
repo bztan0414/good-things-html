@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -7,71 +6,276 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <title>热敏打印机 - 上传 & 预览 & 打印</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        textarea, input, select, button { margin: 5px; padding: 10px; font-size: 16px; }
-        #preview { width: 300px; min-height: 20px; margin: 20px auto; padding: 2px; border: 0px solid #000; background: #f5f5f5; text-align: center; }
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #34495e;
+            --accent-color: #2ecc71;
+            --bg-color: #f5f7fa;
+            --text-color: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            padding: 10px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.4;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            font-size: 2em;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            display: inline-block;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        .input-section {
+            margin: 15px auto;
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        textarea {
+            width: 100%;
+            max-width: 800px;
+            height: 80px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin: 10px 0;
+            background: white;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 10px rgba(74, 144, 226, 0.2);
+            outline: none;
+        }
+
+        .controls-section {
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        select {
+            padding: 8px 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            margin: 0 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select:hover {
+            border-color: var(--primary-color);
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin: 15px 0;
+            width: 100%;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            background: var(--primary-color);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: #357abd;
+        }
+
+        #preview {
+            width: 100%;
+            max-width: 300px;
+            min-height: 20px;
+            margin: 0px;
+            padding: 0px;
+            border-radius: 10px;
+            background: white;
+            line-height: 1.01;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
         .resizable {
             display: inline-block;
             position: relative;
-            margin: 5px;
+            margin: 0px;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
+
         .resizable img {
             display: block;
             max-width: 100%;
             height: auto;
             cursor: pointer;
+            transition: transform 0.3s ease;
         }
+
+        .resizable img:hover {
+            transform: scale(1.02);
+        }
+
         .resizable.selected {
-            border: 2px solid blue; /* 选中图片时显示蓝色边框 */
+            border: 2px solid var(--primary-color);
+            box-shadow: 0 0 12px rgba(74, 144, 226, 0.3);
         }
+
         .resizer {
             width: 10px;
             height: 10px;
-            background: red;
+            background: var(--primary-color);
             position: absolute;
             bottom: 0;
             right: 0;
             cursor: nwse-resize;
-            display: none; /* 默认隐藏 */
+            border-radius: 50%;
+            display: none;
         }
+
         .resizable.selected .resizer {
-            display: block; /* 选中时显示拖动角 */
+            display: block;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .custom-file-upload {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 8px;
+            border: 2px dashed var(--primary-color);
+            border-radius: 20px;
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .custom-file-upload:hover {
+            background: rgba(74, 144, 226, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease forwards;
         }
     </style>
 </head>
 <body>
-    <h2>热敏打印机</h2>
-    
-    <textarea id="textToPrint" placeholder="输入要打印的内容..." oninput="updatePreview()"></textarea><br>
-    
-    <label>字体大小：</label>
-    <select id="fontSize" onchange="updatePreview()">
-        <option value="18px">小</option>
-        <option value="22px" selected>中</option>
-        <option value="28px">大</option>
-    </select>
+    <div class="container">
+        <h2 class="fade-in">智能热敏打印系统</h2>
+        
+        <div class="input-section fade-in">
+            <textarea id="textToPrint" placeholder="在这里输入要打印的内容..." oninput="updatePreview()"></textarea>
+            
+            <div class="controls-section">
+                <div>
+                    <label>字体大小：</label>
+                    <select id="fontSize" onchange="updatePreview()">
+                        <option value="20px">小</option>
+                        <option value="26px" selected>中</option>
+                        <option value="30px">大</option>
+                    </select>
+                </div>
 
-    <label>对齐方式：</label>
-    <select id="align" onchange="updatePreview()">
-        <option value="left">左对齐</option>
-        <option value="center">居中</option>
-        <option value="right">右对齐</option>
-    </select>
+                <div>
+                    <label>对齐方式：</label>
+                    <select id="align" onchange="updatePreview()">
+                        <option value="left">左对齐</option>
+                        <option value="center">居中</option>
+                        <option value="right">右对齐</option>
+                    </select>
+                </div>
 
+                <div>
+                    <button id="boldButton" onclick="toggleBold()">加粗</button>
+                </div>
+            </div>
+        </div>
 
-    <div id="preview"></div>
+        <div id="preview" class="fade-in"></div>
 
-    <input type="file" id="fileInput" accept="image/*" multiple onchange="previewFile()">
-    
-    <button onclick="connectPrinter()">连接打印机</button>
-    <button onclick="printContent()">打印</button>
-    <button onclick="pushPaper()">手动推纸</button>
-    <button onclick="clearPreview()">清空预览</button>
-    <button onclick="disconnectPrinter()">断开连接</button>
-    <button onclick="exportAsJPG()">导出为 JPG</button>
+        <div class="button-group fade-in">
+            <label class="custom-file-upload">
+                <input type="file" id="fileInput" accept="image/*" multiple onchange="previewFile()">
+                📁 选择图片文件
+            </label>
+            
+            <button onclick="connectPrinter()">🔌 连接打印机</button>
+            <button onclick="printContent()">🖨️ 打印</button>
+            <button onclick="pushPaper()">📄 手动推纸</button>
+            <button onclick="clearPreview()">🗑️ 清空预览</button>
+            <button onclick="disconnectPrinter()">❌ 断开连接</button>
+            <button onclick="exportAsJPG()">💾 导出为 JPG</button>
+        </div>
+    </div>
 
     <script>
+        // 保持原有的 JavaScript 代码不变
         let printerPort, printerWriter;
+        let isBold = false;
 
         async function connectPrinter() {
             // 检测是否是移动设备
@@ -105,31 +309,47 @@
                     }
 
                     try {
-                        // **Android - USB 连接（OTG）**
-                        const device = await navigator.usb.requestDevice({ filters: [] }); // 这里可以加 `vendorId`
-                        await device.open();
-                        await device.selectConfiguration(1);
-                        await device.claimInterface(0);
-                        alert("✅ Android 端：USB 打印机已连接！");
-                        return;
+                        const device = await navigator.bluetooth.requestDevice({
+                            acceptAllDevices: true,
+                            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] // 常见热敏打印机 UUID
+                        });
+
+                        const server = await device.gatt.connect();
+                        const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+                        const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+
+                        let data = new TextEncoder().encode("Hello Printer\n"); // 打印内容
+                        await characteristic.writeValue(data);
+                        
+                        alert("发送成功！");
                     } catch (error) {
-                        alert("❌ USB OTG 连接失败：" + error.message);
+                        alert("连接失败：" + error.message);
                     }
-                } else {
-                    // 🚨 **iOS 设备 - 直接提示不支持**
-                    alert("❌ iOS 设备不支持直接连接打印机！请使用服务器打印或 AirPrint。");
                 }
             }
         }
 
-
-
         async function disconnectPrinter() {
-            if (!printerPort) return;
-            await printerWriter.releaseLock();
-            await printerPort.close();
-            printerPort = printerWriter = null;
-            alert("打印机已断开！");
+            try {
+                if (!printerPort) {
+                    alert("没有连接的打印机!");
+                    return;
+                }
+                if (printerWriter) {
+                    await printerWriter.releaseLock();
+                }
+                await printerPort.close();
+                printerPort = printerWriter = null;
+                alert("打印机已断开！");
+            } catch (error) {
+                alert("断开打印机失败: " + error.message);
+            }
+        }
+
+        function toggleBold() {
+            isBold = !isBold;
+            updatePreview();
+            document.getElementById('boldButton').style.background = isBold ? '#357abd' : 'var(--primary-color)';
         }
 
         function updatePreview() {
@@ -138,15 +358,13 @@
             let align = document.getElementById("align").value;
             let preview = document.getElementById("preview");
 
-            let images = [...preview.querySelectorAll(".resizable")]; // 获取所有图片
-            let formattedText = text.replace(/\n/g, "<br>"); // 换行符替换为 <br>
+            let images = [...preview.querySelectorAll(".resizable")];
+            let formattedText = text.replace(/\n/g, "<br>");
 
-            preview.innerHTML = `<p style="font-size:${fontSize}; text-align:${align}; margin: 0; pointer-events: none;">${formattedText}</p>`;
+            preview.innerHTML = `<p style="font-size:${fontSize}; text-align:${align}; margin: 0; pointer-events: none; font-weight:${isBold ? 'bold' : 'normal'};">${formattedText}</p>`;
 
-            images.forEach(img => preview.appendChild(img)); // 重新加入图片
+            images.forEach(img => preview.appendChild(img));
         }
-
-
 
         function previewFile() {
             let files = document.getElementById("fileInput").files;
@@ -160,7 +378,7 @@
 
                     let img = document.createElement("img");
                     img.src = e.target.result;
-                    img.style.width = "150px"; // 默认宽度
+                    img.style.width = "150px";
                     img.style.height = "auto";
 
                     let resizer = document.createElement("div");
@@ -179,20 +397,16 @@
                 reader.readAsDataURL(file);
             }
 
-            // 解决上传相同文件无反应的问题
             document.getElementById("fileInput").value = "";
         }
 
         function toggleImageSelection(container) {
             if (container.classList.contains("selected")) {
-                // 如果已选中，再次点击取消选中
                 container.classList.remove("selected");
             } else {
-                // 先取消其他所有图片的选中状态
                 document.querySelectorAll(".resizable").forEach(imgContainer => {
                     imgContainer.classList.remove("selected");
                 });
-                // 选中当前图片
                 container.classList.add("selected");
             }
         }
@@ -225,32 +439,27 @@
         }
 
         async function sendCommand(data) {
-                    if (!printerWriter) return alert("请先连接打印机！");
-                    await printerWriter.write(new Uint8Array(data));
-                }
+            if (!printerWriter) return alert("请先连接打印机！");
+            await printerWriter.write(new Uint8Array(data));
+        }
 
-                async function printContent() {
+        async function printContent() {
             const preview = document.getElementById("preview");
 
-            // 使用 html2canvas 将 preview 转换为图片
             html2canvas(preview, {
-                scale: 2, // 提高分辨率
-                useCORS: true, // 允许跨域资源
+                scale: 2,
+                useCORS: true,
             }).then(canvas => {
-                // 获取 canvas 的图像数据
-                const imgData = canvas.toDataURL("image/jpeg", 0.9); // 质量为 90%
+                const imgData = canvas.toDataURL("image/jpeg", 0.9);
 
-                // 创建 img 元素并加载图片数据
                 const img = new Image();
                 img.src = imgData;
 
-                // 等待图片加载完成后打印
                 img.onload = async function() {
                     try {
                         let printCanvas = document.createElement("canvas");
                         let ctx = printCanvas.getContext("2d");
 
-                        // 设置打印机宽度（适配 58mm 打印机，或你需要的打印机规格）
                         printCanvas.width = 384;
                         printCanvas.height = (img.height / img.width) * 384;
                         ctx.drawImage(img, 0, 0, printCanvas.width, printCanvas.height);
@@ -259,22 +468,15 @@
                         let data = imageData.data;
                         let grayscale = [];
 
-                        // 转换为黑白图像
                         for (let i = 0; i < data.length; i += 4) {
-                            let r = data[i];       // 红色
-                            let g = data[i + 1];   // 绿色
-                            let b = data[i + 2];   // 蓝色
+                            let r = data[i];
+                            let g = data[i + 1];
+                            let b = data[i + 2];
 
-                            // 计算像素的平均亮度
                             let brightness = (r + g + b) / 3;
-
-                            // 使用阈值判断是黑色还是白色
-                            grayscale.push(brightness < 128 ? 0 : 1);  // 128 是阈值，亮度低于该值为黑色，否则为白色
+                            grayscale.push(brightness < 128 ? 0 : 1);
                         }
 
-
-
-                        // 每行字节数
                         let bytesPerRow = Math.ceil(printCanvas.width / 8);
                         let imageBytes = [];
 
@@ -293,19 +495,15 @@
                             imageBytes.push(...row);
                         }
 
-                        // 发送打印命令（适用于热敏打印机等）
                         await sendCommand([0x1D, 0x76, 0x30, 0, bytesPerRow & 0xFF, (bytesPerRow >> 8) & 0xFF, printCanvas.height & 0xFF, (printCanvas.height >> 8) & 0xFF]);
                         await sendCommand(imageBytes);
-
-                        // 走纸
-                        await sendCommand([0x1B, 0x64, 3]); // 3 是走纸长度，可以根据需要调整
+                        await sendCommand([0x1B, 0x64, 3]);
 
                     } catch (error) {
                         alert("打印图片失败: " + error.message);
                     }
                 };
 
-                // 如果图片加载失败，打印错误
                 img.onerror = function() {
                     alert("图片加载失败");
                 };
@@ -313,10 +511,6 @@
                 alert("转换为图片失败: " + error.message);
             });
         }
-
-
-
-
 
         async function pushPaper() {
             await sendCommand([0x1B, 0x64, 5]);
@@ -326,22 +520,28 @@
             document.getElementById("preview").innerHTML = "";
             document.getElementById("textToPrint").value = "";
         }
+
         function exportAsJPG() {
-        const preview = document.getElementById("preview");
-        
-        html2canvas(preview, {
-            scale: 2, // 提高分辨率（可选）
-            backgroundColor: "#ffffff", // 使用白色背景而非透明背景，防止出现黑边
-            useCORS: true, // 允许跨域资源
-        }).then(canvas => {
-            const link = document.createElement("a");
-            link.download = "preview.jpg";
-            link.href = canvas.toDataURL("image/jpeg", 0.9); // 0.9 = 90% 质量
-            link.click();
+            const preview = document.getElementById("preview");
+            
+            html2canvas(preview, {
+                scale: 2,
+                backgroundColor: "#ffffff",
+                useCORS: true,
+            }).then(canvas => {
+                const link = document.createElement("a");
+                link.download = "preview.jpg";
+                link.href = canvas.toDataURL("image/jpeg", 0.9);
+                link.click();
+            });
+        }
+
+        // 添加页面加载动画
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.fade-in').forEach((element, index) => {
+                element.style.animationDelay = `${index * 0.1}s`;
+            });
         });
-    }
-
-
     </script>
 </body>
 </html>
