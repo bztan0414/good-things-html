@@ -143,14 +143,21 @@
             width: 100%;
             max-width: 300px;
             min-height: 20px;
-            margin: 0px;
-            padding: 0px;
+            margin: 0;
+            padding: 0;
+            align-items: stretch; /* 让内容贴合 */
             border-radius: 10px;
             background: white;
-            line-height: 1.01;
+            line-height: 1.2;
+            font-size: 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
         }
+        #preview p, #preview span {
+            margin: 0; /* 清除默认 margin */
+            padding: 0;
+        }
+
 
         .resizable {
             display: inline-block;
