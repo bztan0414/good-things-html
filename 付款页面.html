@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多方式付款页面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+
+        .payment-container {
+            position: relative;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            overflow: hidden;
+        }
+
+        .payment-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent,
+                rgba(0, 255, 255, 0.1),
+                transparent
+            );
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes shine {
+            0% {
+                transform: translateX(-100%) rotate(45deg);
+            }
+            100% {
+                transform: translateX(100%) rotate(45deg);
+            }
+        }
+
+        .title {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .payment-method {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .payment-method:hover {
+            background: rgba(0, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .payment-method.active {
+            background: rgba(0, 255, 255, 0.2);
+            border-color: #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        .payment-method img {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 0.5rem;
+        }
+
+        .qr-container {
+            display: none;
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .qr-container.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin: 1rem auto;
+            background: #fff;
+            padding: 0.5rem;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-code img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .copy-button,
+        .copy-button:link,
+        .copy-button:visited {
+            background: linear-gradient(45deg, #00ffff, #0066ff);
+            border: none;
+            border-radius: 5px;
+            padding: 0.5rem 1rem;
+            color: #fff;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .copy-button:hover,
+        .copy-button:active {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.4);
+            color: #fff;
+            text-decoration: none;
+        }
+        .payment-details {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+    <style>
+        /* 响应式优化 */
+        @media (max-width: 600px) {
+            .payment-container {
+                padding: 1rem;
+                border-radius: 10px;
+                max-width: 98vw;
+            }
+            .title {
+                font-size: 1.3rem;
+            }
+            .payment-methods {
+                grid-template-columns: 1fr;
+                gap: 0.8rem;
+            }
+            .payment-method {
+                padding: 0.7rem;
+            }
+            .payment-method img {
+                width: 32px;
+                height: 32px;
+            }
+            .qr-code {
+                width: 90vw;
+                max-width: 260px;
+                height: auto;
+                min-width: 160px;
+                padding: 0.3rem;
+            }
+            .qr-code img {
+                width: 100%;
+                height: auto;
+            }
+            .copy-button {
+                font-size: 1rem;
+                padding: 0.5rem 1.2rem;
+                margin-top: 0.8rem;
+            }
+            .payment-details {
+                font-size: 1rem;
+                padding: 0 0.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    <div class="payment-container">
+        <h1 class="title">选择支付方式</h1>
+        
+        <div class="payment-methods">
+            <div class="payment-method" data-method="duitnow">
+                <img src="https://github.com/bztan0414/good-things-html/blob/main/DuitNow1.jpg?raw=true" alt="DuitNow">
+                <div>DuitNow</div>
+            </div>
+            <div class="payment-method" data-method="bank">
+                <img src="https://api.iconify.design/mdi:bank.svg" alt="银行转账">
+                <div>银行转账</div>
+            </div>
+            <div class="payment-method" data-method="tng">
+                <img src="https://github.com/bztan0414/good-things-html/blob/main/Touch_'n_Go_eWallet.svg.png?raw=true" alt="TNG">
+                <div>TNG</div>
+            </div>
+        </div>
+
+        <div class="qr-container" id="duitnow-qr">
+            <h3>DuitNow 支付</h3>
+            <div class="qr-code">
+                <img src="https://github.com/bztan0414/good-things-html/blob/main/duitnow.jpg?raw=true" alt="DuitNow QR">
+            </div>
+            <div class="payment-details">
+                <p>商家名称: 1</p>
+                <button class="copy-button" onclick="copyToClipboard('123456789')">复制ID</button>
+            </div>
+        </div>
+
+        <div class="qr-container" id="bank-qr">
+            <h3>银行转账</h3>
+            <div class="payment-details">
+                <p>银行: Maybank</p>
+                <p>账号: </p>
+                <p>账户名:</p>
+                <button class="copy-button" onclick="copyToClipboard('')">复制账号</button>
+            </div>
+        </div>
+
+        <div class="qr-container" id="tng-qr">
+            <h3>TNG 支付</h3>
+            <div class="qr-code">
+                <img src="https://github.com/bztan0414/good-things-html/blob/main/tng.jpg?raw=true" alt="TNG QR">
+            </div>
+            <div class="payment-details">
+                <p>TNG: 1</p>
+                <a href="https://payment.tngdigital.com.my/sc/bDLn9IK5A5" class="copy-button" target="_blank">跳转链接</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        // 初始化粒子效果
+        particlesJS('particles', {
+            particles: {
+                number: {
+                    value: 80,
+                    density: {
+                        enable: true,
+                        value_area: 800
+                    }
+                },
+                color: {
+                    value: '#00ffff'
+                },
+                shape: {
+                    type: 'circle'
+                },
+                opacity: {
+                    value: 0.5,
+                    random: true
+                },
+                size: {
+                    value: 3,
+                    random: true
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: '#00ffff',
+                    opacity: 0.2,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 2,
+                    direction: 'none',
+                    random: true,
+                    straight: false,
+                    out_mode: 'out',
+                    bounce: false
+                }
+            },
+            interactivity: {
+                detect_on: 'canvas',
+                events: {
+                    onhover: {
+                        enable: false
+                    },
+                    onclick: {
+                        enable: false
+                    },
+                    resize: true
+                }
+            },
+            retina_detect: true
+        });
+
+        // 支付方式选择
+        const paymentMethods = document.querySelectorAll('.payment-method');
+        const qrContainers = document.querySelectorAll('.qr-container');
+
+        paymentMethods.forEach(method => {
+            method.addEventListener('click', () => {
+                const methodType = method.getAttribute('data-method');
+                const qrContainer = document.getElementById(`${methodType}-qr`);
+                const isActive = method.classList.contains('active');
+
+                // 如果当前已激活，则关闭
+                if (isActive) {
+                    method.classList.remove('active');
+                    qrContainer.classList.remove('active');
+                } else {
+                    // 关闭所有
+                    paymentMethods.forEach(m => m.classList.remove('active'));
+                    qrContainers.forEach(qr => qr.classList.remove('active'));
+                    // 激活当前
+                    method.classList.add('active');
+                    qrContainer.classList.add('active');
+                }
+            });
+        });
+
+        // 复制到剪贴板功能
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制到剪贴板！');
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        }
+    </script>
+</body>
+</html>
